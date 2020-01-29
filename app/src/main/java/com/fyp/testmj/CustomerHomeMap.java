@@ -7,13 +7,18 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.fragment.app.FragmentActivity;
 
+import android.app.AlertDialog;
 import android.app.Notification;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.RatingBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -28,6 +33,12 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,24 +48,14 @@ import static com.fyp.testmj.LabEngineerHome.CHANNEL_1_ID;
 public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        com.google.android.gms.location.LocationListener, GoogleMap.OnInfoWindowClickListener{
+        com.google.android.gms.location.LocationListener{
 
-   // ArrayList<LatLng> arrayList = new ArrayList<LatLng>();
    HashMap<String, String> markerMap = new HashMap<String, String>();
-    private NotificationManagerCompat notificationManager;
-    LatLng iPhoneRepairShop = new LatLng(31.464129, 74.311293);
-    LatLng SamsungRepairShop = new LatLng(31.463198, 74.310814);
-    LatLng Shah_G_Mobile_RepairingShop = new LatLng(31.460960, 74.315913);
     private GoogleMap mMap;
     GoogleApiClient cGoogleApiClient;
     Location cLastLocation;
     LocationRequest cLocationRequest;
-
-    MarkerOptions iPhone = new MarkerOptions();
-    MarkerOptions SamSung = new MarkerOptions();
-    MarkerOptions ShahGMobile = new MarkerOptions();
-
-
+    DatabaseReference labs;
     private SupportMapFragment mapFragment;
 
     @Override
@@ -71,26 +72,18 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     LOCATION_REQUEST_CODE);
         }else {
             mapFragment.getMapAsync(this);
-            notificationManager = NotificationManagerCompat.from(this);
-
-           /* arrayList.add(iPhoneRepairShop);
-            arrayList.add(SamsungRepairShop);*/
-             }
+            labs = FirebaseDatabase.getInstance().getReference().child("LabEngineer");
+        }
     }
-
-
-
-    /*-------------------------------------------- Map specific functions -----
-       |  Function(s) onMapReady, buildGoogleApiClient, onLocationChanged, onConnected
-       |
-       |  Purpose:  Find and update user's location.
-       |
-       |  Note:
-       |	   The update interval is set to 1000Ms and the accuracy is set to PRIORITY_HIGH_ACCURACY,
-       |      If you're having trouble with battery draining too fast then change these to lower values
-       |
-       |
-       *-------------------------------------------------------------------*/
+       /*--------------------------------- Map specific functions -----------------------------*
+       |  Function(s) onMapReady, buildGoogleApiClient, onLocationChanged, onConnected         |
+       |                                                                                       |
+       |  Purpose:  User location and Registered LabEngineers                                  |
+       |                                                                                       |
+       |  Note:                                                                                |
+       |	   Markers have been added dynamically to show labEngineer's shops                 |
+       |       As soon as a new labengineer is registered, marker will be added on his location|
+       *---------------------------------------------------------------------------------------*/
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -101,79 +94,50 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
             ActivityCompat.requestPermissions(CustomerHomeMap.this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                     LOCATION_REQUEST_CODE);
         }
-
         buildGoogleApiClient();
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMyLocationEnabled(true);
+        labs.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot s: dataSnapshot.getChildren())
+                {
+                    String username = String.valueOf(s.child("UserName").getValue());
+                    String email = String.valueOf(s.child("Email").getValue());
+                    String MobileNumber = String.valueOf(s.child("Mobile Number").getValue());
+                    String skills = String.valueOf(s.child("Skills").getValue());
+                    Double lati = (Double) s.child("Latitude").getValue();
+                    Double longi = (Double) s.child("Longitude").getValue();
+                    LatLng location = new LatLng(lati, longi);
 
-//        MarkerOptions iPhone = new MarkerOptions();
-//        MarkerOptions SamSung = new MarkerOptions();
-//        MarkerOptions ShahGMobile = new MarkerOptions();
+                    mMap.addMarker(new MarkerOptions().position(location).title(username).snippet(skills + "\n\n" + email +
+                            "\n\n" + MobileNumber));
+                    mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                        @Override
+                        public boolean onMarkerClick(Marker marker) {
+                            AlertDialog.Builder mBuilder = new AlertDialog.Builder(CustomerHomeMap.this);
+                            View mView = getLayoutInflater().inflate(R.layout.request_dialog, null);
+                            TextView ShopName = (TextView) mView.findViewById(R.id.shopName_text);
+                            TextView Skills = (TextView) mView.findViewById(R.id.skills_text);
+                            EditText Problem = (EditText) mView.findViewById(R.id.problem_text);
+                            Button Request = (Button) mView.findViewById(R.id.requestBtn);
 
-        iPhone.position(iPhoneRepairShop).title("iPhone Repair Shop");
-        ShahGMobile.position(Shah_G_Mobile_RepairingShop).title("Shah G Mobile Repairing Shop");
-        SamSung.position(SamsungRepairShop).title("SamSung Repair Shop");
+                            ShopName.setText(marker.getTitle());
+                            Skills.setText(marker.getSnippet());
+                            mBuilder.setView(mView);
+                            AlertDialog dialog = mBuilder.create();
+                            dialog.show();
+                            return false;
+                        }
+                    });
+                }
+            }
 
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
 
-
-        Info_Window_Data iPhone_info = new Info_Window_Data();
-        Info_Window_Data SamSung_info = new Info_Window_Data();
-        Info_Window_Data ShahG_info = new Info_Window_Data();
-
-        //iPhone_info.setLabRnineerImage("Hello");
-        iPhone_info.setLabEngineerName("Ali");
-        iPhone_info.setLabEngineerSkills("iPhone Repair Services");
-        iPhone_info.setLabEngineerEmail("alirepairserives@gmail.com");
-        iPhone_info.setLabEngineerPhone("Phone No: 03049875164");
-        iPhone_info.setRatingBar(3.5f);
-
-
-
-        //SamSung_info.setLabRnineerImage("Ahmad");
-        SamSung_info.setLabEngineerName("Ahmad");
-        SamSung_info.setLabEngineerSkills("SamSung Phone Repair Services");
-        SamSung_info.setLabEngineerEmail("samsungrepair@yahoo.com");
-        SamSung_info.setLabEngineerPhone("03216578941");
-        SamSung_info.setRatingBar(4.5f);
-
-
-       // ShahG_info.setLabRnineerImage("ShahG");
-        ShahG_info.setLabEngineerName("Shah G");
-        ShahG_info.setLabEngineerSkills("All Phone Company Repair Services");
-        ShahG_info.setLabEngineerEmail("shahg@outlook.com");
-        ShahG_info.setLabEngineerPhone("03056573947");
-        ShahG_info.setRatingBar(2f);
-
-
-        Map_Custom_Info_Window map_custom_info_window = new Map_Custom_Info_Window(this);
-        mMap.setInfoWindowAdapter(map_custom_info_window);
-        mMap.setOnInfoWindowClickListener(map_custom_info_window);
-
-        Marker IPHONE = mMap.addMarker(iPhone);
-        IPHONE.setTag(iPhone_info);
-        IPHONE.showInfoWindow();
-//        String idOne = IPHONE.getId();
-//        markerMap.put(idOne, "A1");
-
-
-
-        Marker SHAHG = mMap.addMarker(ShahGMobile);
-        SHAHG.setTag(ShahG_info);
-        SHAHG.showInfoWindow();
-
-        Marker SAMSUNG = mMap.addMarker(SamSung);
-        SAMSUNG.setTag(SamSung_info);
-        SAMSUNG.showInfoWindow();
-
-        //mMap.addMarker(new MarkerOptions().position(iPhoneRepairShop).title("iPhone Repair Shop"));
-        //mMap.addMarker(new MarkerOptions().position(SamsungRepairShop).title("Samsung Repair Shop"));
-        /*for (int i = 0; i < arrayList.size(); i++) {
-            mMap.addMarker(new MarkerOptions().position(arrayList.get(i)).title("Marker"));
-        } */
-
-        /*
-        * Adding Custom info Windows to the markers
-        * */
+            }
+        });
 
     }
 
@@ -182,20 +146,7 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     @Override
     public boolean onMarkerClick(final Marker marker)
     {
-
-        // Retrieve the data from the marker.
-        Integer clickCount = (Integer) marker.getTag();
-
-        // Check if a click count was set, then display the click count.
-        if (clickCount != null) {
-            clickCount = clickCount + 1;
-            marker.setTag(clickCount);
-            Toast.makeText(this,
-                    marker.getTitle() +
-                            " has been clicked " + clickCount + " times.",
-                    Toast.LENGTH_SHORT).show();
-        }
-
+        Toast.makeText(this, "Marker Clicked", Toast.LENGTH_SHORT).show();
         return false;
 
     }
@@ -244,7 +195,7 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
     }
-    /*-------------------------------------------- onRequestPermissionsResult -----
+    /*--------------------------- onRequestPermissionsResult -------------------
    |  Function onRequestPermissionsResult
    |
    |  Purpose:  Get permissions for our app if they didn't previously exist.
@@ -253,7 +204,7 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
    |	requestCode: the number assigned to the request that we've made. Each
    |                request has it's own unique request code.
    |
-   *-------------------------------------------------------------------*/
+   *-------------------------------------------------------------------------------*/
 
     final int LOCATION_REQUEST_CODE = 1;
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
@@ -274,17 +225,4 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
         }
     }
 
-    @Override
-    public void onInfoWindowClick(Marker marker) {
-//        String actionID = markerMap.get(marker.getId());
-//        if(actionID.equals("A1")) {
-//            Notification notification = new NotificationCompat.Builder(this, CHANNEL_1_ID)
-//                    .setSmallIcon(R.drawable.ic_one)
-//                    .setContentTitle("Repair Request")
-//                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-//                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-//                    .build();
-//            notificationManager.notify(1, notification);
-//        }
-    }
 }

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_background">
+
+    <TextView
+        android:id="@+id/shopName_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Shop Name"
+        android:gravity="center"
+        android:layout_marginTop="20dp"
+        android:textColorHint="@color/textHint_color"
+        android:textSize="20sp"
+        android:textColor="@color/text_color"
+        />
+    <TextView
+        android:id="@+id/skills_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Skills"
+        android:gravity="center"
+        android:textSize="20sp"
+        android:textColorHint="@color/textHint_color"
+        android:textColor="@color/text_color"
+        android:layout_marginTop="10dp"
+        />
+
+    <EditText
+        android:id="@+id/problem_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Describe Your Problem"
+        android:gravity="center"
+        android:textSize="20sp"
+        android:textColorHint="@color/textHint_color"
+        android:textColor="@color/text_color"
+        android:layout_marginTop="10dp"
+        />
+
+    <Button
+        android:id="@+id/requestBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/button_background"
+        android:layout_marginTop="10dp"
+        android:text="Request"
+        android:textSize="20sp"
+        android:textColor="@color/text_color" />
+
+</LinearLayout>
