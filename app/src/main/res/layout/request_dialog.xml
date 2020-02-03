@@ -8,9 +8,9 @@
         android:id="@+id/shopName_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="invisible"
         android:hint="Shop Name"
         android:gravity="center"
-        android:layout_marginTop="20dp"
         android:textColorHint="@color/textHint_color"
         android:textSize="20sp"
         android:textColor="@color/text_color"
@@ -29,9 +29,12 @@
 
     <EditText
         android:id="@+id/problem_text"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:hint="Describe Your Problem"
+        android:layout_gravity="center"
+        android:inputType="numberDecimal"
+        android:ems="10"
         android:gravity="center"
         android:textSize="20sp"
         android:textColorHint="@color/textHint_color"
@@ -41,12 +44,15 @@
 
     <Button
         android:id="@+id/requestBtn"
-        android:layout_width="match_parent"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:background="@drawable/button_background"
+        android:layout_gravity="center"
         android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp"
         android:text="Request"
         android:textSize="20sp"
         android:textColor="@color/text_color" />
+
 
 </LinearLayout>

@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -21,6 +22,7 @@ public class LabEngineerSignin extends AppCompatActivity {
 
     private EditText EngEmail, EngPassword;
     private Button LabEngineerSigninBtn;
+    private TextView NoAccount;
     private FirebaseAuth lAuth;
     private FirebaseAuth.AuthStateListener firebaseAuthListner;
 
@@ -32,6 +34,8 @@ public class LabEngineerSignin extends AppCompatActivity {
         EngEmail = (EditText) findViewById(R.id.eng_email_text);
         EngPassword = (EditText) findViewById(R.id.eng_pass_text);
         LabEngineerSigninBtn = (Button) findViewById(R.id.eng_signin_btn);
+        NoAccount = (TextView) findViewById(R.id.eng_no_acc);
+
         lAuth = FirebaseAuth.getInstance();
 
         firebaseAuthListner = new FirebaseAuth.AuthStateListener() {
@@ -85,7 +89,15 @@ public class LabEngineerSignin extends AppCompatActivity {
                             }); }
             }
         });
-
+        NoAccount.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(LabEngineerSignin.this, Lab_Registration.class);
+                startActivity(i);
+                finish();
+                return;
+            }
+        });
 
     }
     @Override

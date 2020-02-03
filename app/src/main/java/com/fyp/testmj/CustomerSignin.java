@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +23,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class CustomerSignin extends AppCompatActivity {
     private EditText CustomerEmail, CustomerPass;
     private TextView CustomerNoAccount;
+    private ProgressBar SigninProgressBar;
     private Button CustomerSigninBtn;
     private FirebaseAuth CAuth;
     private FirebaseAuth.AuthStateListener firebaseAuthListner;
@@ -36,6 +38,7 @@ public class CustomerSignin extends AppCompatActivity {
         CustomerPass = (EditText) findViewById(R.id.customer_signin_pass_text);
         CustomerSigninBtn = (Button) findViewById(R.id.customer_signin_btn);
         CustomerNoAccount = (TextView) findViewById(R.id.customer_noacc);
+        SigninProgressBar = (ProgressBar) findViewById(R.id.signin_progressBar);
 
         CAuth = FirebaseAuth.getInstance();
 
@@ -68,22 +71,19 @@ public class CustomerSignin extends AppCompatActivity {
                     Toast.makeText(CustomerSignin.this, "Password is too short.", Toast.LENGTH_SHORT).show();
                 }
                 else {
+                    SigninProgressBar.setVisibility(View.VISIBLE);
                     CAuth.signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener(CustomerSignin.this, new OnCompleteListener<AuthResult>() {
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
-
+                                SigninProgressBar.setVisibility(View.GONE);
                                 if (task.isSuccessful()) {
                                     // Sign in success, update UI with the signed-in user's information
                                     startActivity(new Intent(getApplicationContext(), CustomerHomeMap.class));
-
-
                                 } else {
                                     // If sign in fails, display a message to the user.
                                     Toast.makeText(CustomerSignin.this, "Login failed or User does not exist.", Toast.LENGTH_SHORT).show();
                                 }
-
-
                             }
                         }); }
             }

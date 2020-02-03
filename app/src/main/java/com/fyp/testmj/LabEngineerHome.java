@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 public class LabEngineerHome extends AppCompatActivity {
-    public static final String CHANNEL_1_ID = "channel1";
     private long backPressedTime;
     private Toast backToast;
     @Override
@@ -17,20 +16,7 @@ public class LabEngineerHome extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_lab_engineer_home);
 
-        CreateNotification();
-    }
-    private void CreateNotification() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel1 = new NotificationChannel(
-                    CHANNEL_1_ID,
-                    "Repair Request",
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            channel1.setDescription("Accept or Reject Request");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel1);
-        }
-    }
+     }
     @Override
     public void onBackPressed() {
 
