@@ -24,7 +24,8 @@
         android:text="Settings"
         android:textColor="@color/text_color"
         android:textSize="15sp"
-        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginLeft="100dp"
+        android:layout_gravity="bottom"
         />
 
     <fragment android:id="@+id/map"

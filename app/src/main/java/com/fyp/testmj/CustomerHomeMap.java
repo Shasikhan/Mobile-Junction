@@ -9,12 +9,16 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.app.AlertDialog;
 import android.app.Notification;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,6 +31,7 @@ import com.google.android.gms.common.api.GoogleApi;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -60,11 +65,15 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     FirebaseUser user;
     private Button clogout;
     private Button cSettings;
+    Location cLasLocation;
+    LatLng latLng;
+    Double latitude, longitude;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_home_map);
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -85,7 +94,6 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     Intent intent = new Intent(CustomerHomeMap.this, CustomerProfile.class);
                     startActivity(intent);
                     finish();
-                    return;
                 }
             });
 
@@ -102,9 +110,7 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                 }
             });
             labs = FirebaseDatabase.getInstance().getReference().child("LabEngineer");
-
         }
-
     }
 
     /*BackPress Button Action*/
@@ -133,7 +139,6 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        Location location;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat
                 .checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) !=  PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(CustomerHomeMap.this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
@@ -143,6 +148,33 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMyLocationEnabled(true);
         mMap.setOnMarkerClickListener(this);
+
+        /*Zooming to current Location*/
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        String provider = locationManager.getBestProvider(criteria, true);
+        Location location = locationManager.getLastKnownLocation(provider);
+        if (location != null) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            LatLng coordinate = new LatLng(latitude, longitude);
+            CameraUpdate yourLocation = CameraUpdateFactory.newLatLngZoom(coordinate, 15);
+            mMap.animateCamera(yourLocation);
+        }
+        /*Custom InfoWindow*/
+        InfoWndowAdapter markerInfoWindowAdapter = new InfoWndowAdapter(getApplicationContext());
+        googleMap.setInfoWindowAdapter(markerInfoWindowAdapter);
+
+        /*Request Dialogue Box*/
+        AlertDialog.Builder mBuilder = new AlertDialog.Builder(CustomerHomeMap.this);
+        View mView = getLayoutInflater().inflate(R.layout.request_dialog, null);
+        TextView ShopName = (TextView) mView.findViewById(R.id.shopName_text);
+        TextView Skills = (TextView) mView.findViewById(R.id.skills_text);
+        EditText Problem = (EditText) mView.findViewById(R.id.problem_text);
+        Button RequestBtn = (Button) mView.findViewById(R.id.requestBtn);
+        mBuilder.setView(mView);
+        AlertDialog dialog = mBuilder.create();
+
         /* Adding Markers by retrieving LabEngineers data */
         labs.addValueEventListener(new ValueEventListener() {
             @Override
@@ -156,30 +188,22 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     Double lati = (Double) s.child("Latitude").getValue();
                     Double longi = (Double) s.child("Longitude").getValue();
                     LatLng location = new LatLng(lati, longi);
-                    mMap.addMarker(new MarkerOptions().position(location).title(userId).snippet(username + "\n\n" + skills + "\n\n" + email +
+                    mMap.addMarker(new MarkerOptions().position(location).snippet(username + "\n\n" + skills + "\n\n" + email +
                             "\n\n" + MobileNumber));
                     mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
                         @Override
                         public boolean onMarkerClick(Marker marker) {
-
-                            AlertDialog.Builder mBuilder = new AlertDialog.Builder(CustomerHomeMap.this);
-                            View mView = getLayoutInflater().inflate(R.layout.request_dialog, null);
-                            TextView ShopName = (TextView) mView.findViewById(R.id.shopName_text);
-                            TextView Skills = (TextView) mView.findViewById(R.id.skills_text);
-                            EditText Problem = (EditText) mView.findViewById(R.id.problem_text);
-                            Button Request = (Button) mView.findViewById(R.id.requestBtn);
+                            marker.setTitle(userId);
                             ShopName.setText(marker.getTitle());
                             Skills.setText(marker.getSnippet());
-                            Request.setOnClickListener(new View.OnClickListener() {
+                            RequestBtn.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    Toast.makeText(CustomerHomeMap.this, user.getUid() , Toast.LENGTH_SHORT).show();
-                                }
+
+                                   }
                             });
-                            mBuilder.setView(mView);
-                            AlertDialog dialog = mBuilder.create();
                             dialog.show();
-                            return true;
+                            return false;
                         }
                     });
                 }
@@ -190,13 +214,11 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
 
             }
         });
-
     }
 
     @Override
     public boolean onMarkerClick(final Marker marker)
     {
-        Toast.makeText(this, "Marker Clicked", Toast.LENGTH_SHORT).show();
         return false;
 
     }
@@ -212,12 +234,10 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onLocationChanged(Location location) {
-       /* if(getApplicationContext()!=null){
-           /* cLastLocation = location;
-            LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-           //mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-           //mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
-        }*/
+        cLasLocation = location;
+        latLng = new LatLng(location.getLatitude(),location.getLongitude());
+//        clat = cLasLocation.getLatitude();
+//        clng = cLasLocation.getLongitude();
     }
 
     @Override
@@ -226,7 +246,6 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
         cLocationRequest.setInterval(1000);
         cLocationRequest.setFastestInterval(5000);
         cLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) !=
@@ -277,3 +296,5 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     }
 
 }
+
+
