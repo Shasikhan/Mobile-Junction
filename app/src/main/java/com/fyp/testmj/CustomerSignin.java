@@ -94,8 +94,6 @@ public class CustomerSignin extends AppCompatActivity {
             public void onClick(View v) {
                 Intent i = new Intent(CustomerSignin.this, Customer_Registration.class);
                 startActivity(i);
-                finish();
-                return;
             }
         });
 

@@ -44,7 +44,6 @@
             android:hint="Username"
             android:inputType="textPersonName"
             android:maxLines="1"
-
             android:textColor="@color/text_color" />
     </com.google.android.material.textfield.TextInputLayout>
 

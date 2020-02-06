@@ -57,8 +57,6 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, CustomerSignin.class);
                 startActivity(i);
-                finish();
-                return;
             }
         });
 
@@ -68,8 +66,6 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, LabEngineerSignin.class);
                 startActivity(i);
-                finish();
-                return;
             }
         });
 

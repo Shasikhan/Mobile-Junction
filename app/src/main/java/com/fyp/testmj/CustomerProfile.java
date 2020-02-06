@@ -69,12 +69,12 @@ public class CustomerProfile extends AppCompatActivity {
 
     }
 
-    @Override
-    public void onBackPressed() {
-        Intent intent = new Intent(CustomerProfile.this, CustomerHomeMap.class);
-        startActivity(intent);
-        finish();
-    }
+//    @Override
+//    public void onBackPressed() {
+//        Intent intent = new Intent(CustomerProfile.this, CustomerHomeMap.class);
+//        startActivity(intent);
+//        finish();
+//    }
 
     private void saveUserInformation() {
         customerUserName = cName.getText().toString();

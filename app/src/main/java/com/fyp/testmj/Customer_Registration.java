@@ -136,7 +136,6 @@ public class Customer_Registration extends AppCompatActivity {
                 Intent i = new Intent(Customer_Registration.this, CustomerSignin.class);
                 startActivity(i);
                 finish();
-                return;
             }
         });
     }

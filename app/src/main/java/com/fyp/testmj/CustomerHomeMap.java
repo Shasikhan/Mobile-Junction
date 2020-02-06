@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -36,6 +37,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -47,27 +50,42 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.w3c.dom.Text;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         com.google.android.gms.location.LocationListener{
 
-    //HashMap<String, String> markerMap = new HashMap<String, String>();
+    private Button clogout;
+    private Button cSettings;
+    private TextView CustomerName;
     private long backPressedTime;
     private Toast backToast;
     private GoogleMap mMap;
-    GoogleApiClient cGoogleApiClient;
-    LocationRequest cLocationRequest;
-    DatabaseReference labs;
+    private GoogleApiClient cGoogleApiClient;
+    private LocationRequest cLocationRequest;
     private SupportMapFragment mapFragment;
-    FirebaseUser user;
-    private Button clogout;
-    private Button cSettings;
-    Location cLasLocation;
-    LatLng latLng;
-    Double latitude, longitude;
+    private FirebaseAuth cAuth;
+    private DatabaseReference userDatabase, RequestDB, labs;
+    private String LabId, userID, customerUserName, customerEmail, customerNumber, customerProblem;
+    private Double latitude, longitude;
+    LatLng coordinate;
+    Marker markers;
+    View mView;
+    TextView ShopName, Skills, Email, MobileNumber, LabIDField;
+    EditText Problem;
+    Button RequestBtn;
+    AlertDialog RequestDialogue;
+    private List<Marker> addmarkers = new ArrayList<>();        private List<String> LabIDS = new ArrayList<>();
+    private List<String> LabUserNames = new ArrayList<>();      private List<String> LabEmails = new ArrayList<>();
+    private List<String> LabMobileNumbers = new ArrayList<>();  private List<String> LabSkills = new ArrayList<>();
+    private List<Double> LabLatis = new ArrayList<>();          private List<Double> Lablngs = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +102,32 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     LOCATION_REQUEST_CODE);
         }else {
             mapFragment.getMapAsync(this);
-            user = FirebaseAuth.getInstance().getCurrentUser();
+            cAuth =FirebaseAuth.getInstance();
+            userID = cAuth.getCurrentUser().getUid();
+            userDatabase = FirebaseDatabase.getInstance().getReference().child("Customers").child(userID);
+            getUserInfo();
+            CustomerName = (TextView) findViewById(R.id.customer_profile_name);
+            RequestDB = FirebaseDatabase.getInstance().getReference().child("Requests");
+            userDatabase.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0)
+                    {
+                        Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                        if (map.get("UserName") != null)
+                        {
+                            String customerUserName = map.get("UserName").toString();
+                            CustomerName.setText(customerUserName);
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+
 
             /*Customer Settings Button*/
             cSettings = (Button) findViewById(R.id.Customer_settingsBtn);
@@ -93,7 +136,6 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                 public void onClick(View v) {
                     Intent intent = new Intent(CustomerHomeMap.this, CustomerProfile.class);
                     startActivity(intent);
-                    finish();
                 }
             });
 
@@ -106,7 +148,6 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     Intent intent = new Intent(CustomerHomeMap.this, CustomerSignin.class);
                     startActivity(intent);
                     finish();
-                    return;
                 }
             });
             labs = FirebaseDatabase.getInstance().getReference().child("LabEngineer");
@@ -157,30 +198,40 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
         if (location != null) {
             latitude = location.getLatitude();
             longitude = location.getLongitude();
-            LatLng coordinate = new LatLng(latitude, longitude);
+            coordinate = new LatLng(latitude, longitude);
             CameraUpdate yourLocation = CameraUpdateFactory.newLatLngZoom(coordinate, 15);
             mMap.animateCamera(yourLocation);
         }
+        //circle of customer range of finding labengineers
+        Circle circle = mMap.addCircle(new CircleOptions()
+                .center(coordinate)
+                .radius(5000)
+                .strokeColor(Color.rgb(45, 43, 85))
+                .fillColor(Color.argb(20, 88, 84, 130)));
         /*Custom InfoWindow*/
-        InfoWndowAdapter markerInfoWindowAdapter = new InfoWndowAdapter(getApplicationContext());
-        googleMap.setInfoWindowAdapter(markerInfoWindowAdapter);
+        //InfoWndowAdapter markerInfoWindowAdapter = new InfoWndowAdapter(getApplicationContext());
+        //googleMap.setInfoWindowAdapter(markerInfoWindowAdapter);
 
         /*Request Dialogue Box*/
         AlertDialog.Builder mBuilder = new AlertDialog.Builder(CustomerHomeMap.this);
-        View mView = getLayoutInflater().inflate(R.layout.request_dialog, null);
-        TextView ShopName = (TextView) mView.findViewById(R.id.shopName_text);
-        TextView Skills = (TextView) mView.findViewById(R.id.skills_text);
-        EditText Problem = (EditText) mView.findViewById(R.id.problem_text);
-        Button RequestBtn = (Button) mView.findViewById(R.id.requestBtn);
+        mView = getLayoutInflater().inflate(R.layout.request_dialog, null);
+        LabIDField = (TextView) mView.findViewById(R.id.LabID_text);
+        ShopName = (TextView) mView.findViewById(R.id.shopName_text);
+        Skills = (TextView) mView.findViewById(R.id.skills_text);
+        Email = (TextView) mView.findViewById(R.id.email_text);
+        MobileNumber = (TextView) mView.findViewById(R.id.mobileNumber_text);
+        Problem = (EditText) mView.findViewById(R.id.problem_text);
+        RequestBtn = (Button) mView.findViewById(R.id.requestBtn);
         mBuilder.setView(mView);
-        AlertDialog dialog = mBuilder.create();
+        RequestDialogue = mBuilder.create();
 
         /* Adding Markers by retrieving LabEngineers data */
         labs.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 for (DataSnapshot s: dataSnapshot.getChildren()) {
-                    String userId =  s.getKey();
+
+                    LabId =  s.getKey();
                     String username = (String) s.child("UserName").getValue();
                     String email = String.valueOf(s.child("Email").getValue());
                     String MobileNumber = String.valueOf(s.child("Mobile Number").getValue());
@@ -188,27 +239,22 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
                     Double lati = (Double) s.child("Latitude").getValue();
                     Double longi = (Double) s.child("Longitude").getValue();
                     LatLng location = new LatLng(lati, longi);
-                    mMap.addMarker(new MarkerOptions().position(location).snippet(username + "\n\n" + skills + "\n\n" + email +
-                            "\n\n" + MobileNumber));
-                    mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-                        @Override
-                        public boolean onMarkerClick(Marker marker) {
-                            marker.setTitle(userId);
-                            ShopName.setText(marker.getTitle());
-                            Skills.setText(marker.getSnippet());
-                            RequestBtn.setOnClickListener(new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-
-                                   }
-                            });
-                            dialog.show();
-                            return false;
+                    markers = mMap.addMarker(new MarkerOptions().position(location).title(username).visible(false));
+                    LabIDS.add(LabId);
+                    LabUserNames.add(username);
+                    LabEmails.add(email);
+                    LabMobileNumbers.add(MobileNumber);
+                    LabSkills.add(skills);
+                    LabLatis.add(lati);
+                    Lablngs.add(longi);
+                    addmarkers.add(markers);
+                    for (Marker marker : addmarkers) {
+                        if (com.google.maps.android.SphericalUtil.computeDistanceBetween(coordinate, marker.getPosition()) < 5000) {
+                            marker.setVisible(true);
                         }
-                    });
+                    }
                 }
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
 
@@ -219,8 +265,67 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
     @Override
     public boolean onMarkerClick(final Marker marker)
     {
+        for (int i = 0; i < LabUserNames.size(); i++) {
+            if (LabUserNames.get(i).equals(marker.getTitle())) {
+                LabIDField.setText(LabIDS.get(i));
+                ShopName.setText(LabUserNames.get(i));
+                Skills.setText(LabSkills.get(i));
+                Email.setText(LabEmails.get(i));
+                MobileNumber.setText(LabMobileNumbers.get(i));
+            }
+        }
+        RequestBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                customerProblem = Problem.getText().toString();
+                Map NewRequest = new HashMap();
+                NewRequest.put("LabEngineerID", LabIDField.getText());
+                NewRequest.put("CustomerID", userID);
+                NewRequest.put("UserName", customerUserName);
+                NewRequest.put("Email", customerEmail);
+                NewRequest.put("Mobile Number", customerNumber);
+                NewRequest.put("Problem", customerProblem);
+                NewRequest.put("Latitude", latitude);
+                NewRequest.put("Longitude", longitude);
+                RequestDB.push().setValue(NewRequest);
+                Toast.makeText(CustomerHomeMap.this, "Request Sent", Toast.LENGTH_SHORT).show();
+                Problem.getText().clear();
+                RequestDialogue.hide();
+            }
+        });
+
+        RequestDialogue.show();
         return false;
 
+    }
+
+    /*Getting Customer Information*/
+    private void getUserInfo() {
+        userDatabase.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0)
+                {
+                    Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                    if (map.get("UserName") != null)
+                    {
+                        customerUserName = map.get("UserName").toString();
+                    }
+                    if (map.get("Email") != null)
+                    {
+                        customerEmail = map.get("Email").toString();
+                    }
+                    if (map.get("Mobile Number") != null)
+                    {
+                        customerNumber = map.get("Mobile Number").toString();
+                    }
+                }
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
     }
 
     protected synchronized void buildGoogleApiClient(){
@@ -234,10 +339,7 @@ public class CustomerHomeMap extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onLocationChanged(Location location) {
-        cLasLocation = location;
-        latLng = new LatLng(location.getLatitude(),location.getLongitude());
-//        clat = cLasLocation.getLatitude();
-//        clng = cLasLocation.getLongitude();
+
     }
 
     @Override
